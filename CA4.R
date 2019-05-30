@@ -1,10 +1,14 @@
 require(xlsx)
+# read in excel document sheet 1
 epa_data_GHG <-read.xlsx("GHG_Final data_1990-2017_website.xlsx", sheetName = "1")
 str(epa_data_GHG)
-
+# use the column National total from the data frame total_data
 total_data <- epa_data_GHG$National.Total
+# print the structure of the data
 str(total_data)
+# Convert the data to time series
 time_series_total_GHG <- ts(total_data, start = c(1990, 1), frequency = 1)
+# outlier removal using tsclean
 #clean_GHG <-tsclean(time_series_total_GHG)
 
 # Using functions to determine the start,end and frequency of the time series
@@ -16,7 +20,7 @@ frequency(time_series_total_GHG)
 #plot(decompose(new_GHG), xlab= Year) # did not work so commenting out
 
 library(forecast)
-# chnage the dispaly setting to have 2 graph side by side
+# chanage the dispaly setting to have 2 graph side by side
 default_settings <- par(no.readonly = TRUE)
 par(mfrow= c(2,2))
 y_boundry <- c(min(time_series_total_GHG), max(time_series_total_GHG))
@@ -65,87 +69,66 @@ plot(diff4_GHG)
 
 # Run the Augmented Dickey-Fuller Test to test for stationarity
 adf.test(diff2_GHG)
-
+# Read in dataset with three manufactured data points at the start of the data
 require(xlsx)
 epa1_data_GHG <-read.xlsx("GHG_Final data_1990-2017_new.xlsx", sheetName = "1")
 str(epa1_data_GHG)
 
 total_data1 <- epa1_data_GHG$National.Total.New
 str(total_data1)
+# convert to time series
 new_GHG <- ts(total_data1, start = c(1987, 1), frequency = 1)
+# check how many lags the data needs
 ndiffs(new_GHG, max.d = 20)
+# Plot the new data
 plot(new_GHG)
+# diff the data by 1
 diff_new_GHG <- diff(new_GHG, lag = 1)
+# plot the differ data
 plot(diff_new_GHG)
 # Run the ndiffs to test for lag required
 ndiffs(new_GHG)
 # Run the ndiffs to test for lag required on the lagged data
 ndiffs(diff_new_GHG)
-# Plot the Acf chart - measure of how the observations
+# Plot the Acf & PACF charts to  measure of how the observations
 # in a time series relate to each other
+# Plot the acf chart lag 2
 acf_result <- Acf(diff2_GHG)
-# Partial the pacf(autocorrelation) chart
+# Plot the pacf(autocorrelation) chart lag 2
 pacf_result <-Pacf(diff2_GHG)
-#pacf_result <-Pacf(T_Data_box_d)
+# Plot the acf chart lag 12
 acf_result2 <- Acf(diff12_GHG)
-# Partial the pacf(autocorrelation) chart
+# Plot the pacf(autocorrelation) chart lag 12
 pacf_result2 <-Pacf(diff12_GHG)
 
-
-#transform the series using boxcox() function
-#lambda <- BoxCox.lambda(time_series_total_GHG)
-#plot.ts(BoxCox(time_series_total_GHG, lambda = lambda))
-#T_Data_box <- BoxCox(time_series_total_GHG, lambda = lambda)
-#T_Data_box_d <- diff(T_Data_box)
-#adf.test(T_Data_box_d)
-
-# Show both side-by-side comparison
+# Show both side-by-side comparison of diffed and non diffed data
 opar <- par(no.readonly=TRUE)
 par(mfrow=c(1,2))
 plot(time_series_total_GHG)
-plot(diff_GHG)
+plot(diff2_GHG)
 par(opar)
-plot(diff_GHG)
-ndiffs(diff_GHG, max.d = 5)
-# Show both side-by-side f comparison
-opar <- par(no.readonly=TRUE)
-par(mfrow=c(1,2))
-plot(time_series_total_GHG)
-plot(diff_GHG)
-par(opar)
-
-ndiffs(diff_GHG)
-kpss.test(diff_GHG)
-kpss.test(diff_GHG, null = "Level")
-kpss.test(diff_GHG, null = "Trend")
-
-adf.test(diff_GHG)
-adf.test(time_series_total_GHG)
+# check the stationarity of the diff2 data
+adf.test(diff2_GHG)
 
 # Fitting the ARIMA model
-#******** NOTE THAT WE USE THE ORIGINAL DATASET FOR TEH ARIMA MODEL**********
-# and we modify the d value to suit our original model
-# and we modify the d value to suit our original findings
-# and d= 1
 library(forecast)
+# Run ARIMA model
 arima_model <- Arima(time_series_total_GHG, order = c(1,2,1))
+# Print the model
 arima_model
+# Print the accuracy of the model
 accuracy(arima_model)
 
 # Auto Arima of the GHG dataset
-auto_arima_model <- auto.arima(time_series_total_GHG, trace=TRUE)
+auto_arima_model <- auto.arima(time_series_total_GHG, trace=TRUE,stepwise=FALSE, approximation=FALSE)
+# Print the model
 auto_arima_model
+# Print the accuracy of the model
 accuracy(auto_arima_model)
-
-# Accuracy measured through the mean absolute percentage error (MAPE)
-# is a measurment of the prediction accuracy
 
 # Evaluate the model fit
 # qqnorm produces a normal QQ plot on the values of y
-# qqline adds a theoritical qq plot
-# which passes through the proobability quantiles
-# by defaualtr the 1st and 3rd quantiles
-
+# qqline adds a theoritical line to the residuals
 qqnorm(arima_model$residuals)
 qqline(arima_model$residuals)
 # Auto Arima model residuals
@@ -160,12 +143,14 @@ Box.test(auto_arima_model$residuals, type ="Ljung-Box")
 
 # Forecast 3 years ahead for the GHG time series
 forecast(arima_model, 3)
+# Plot the forecast
 plot(forecast(arima_model, 3),
      xlab ="Year",
      ylab ="Mt C02 eq")
 
-# Forecast 3 years ahead for the GHG time series
+# Forecast 3 years ahead for auto arima using the GHG time series
 forecast(auto_arima_model, 3)
+# plot the forecast
 plot(forecast(auto_arima_model, 3),
      xlab ="Year",
      ylab ="Mt C02 eq")
@@ -181,45 +166,26 @@ validate_GHG <- ts(total_data2, start = c(1990, 1), frequency = 1)
 validate_GHG
 
 library(forecast)
+# running ARIMA model to validate model
 arima_model_validate <- Arima(validate_GHG, order = c(1,2,1))
 arima_model_validate
 accuracy(arima_model_validate)
 
-# Forecast 3 years ahead for the GHG time series
+# Forecast 3 years of data that is already measured
 forecast(arima_model_validate, 3)
 plot(forecast(arima_model_validate, 3),
      xlab ="Year",
      ylab ="Mt C02 eq")
 
-# Auto Arima of the GHG dataset
+# Create an Auto Arima to validate the model using data that is already measured
 auto_arima_model_validate <- auto.arima(validate_GHG, trace=TRUE)
 auto_arima_model_validate
 accuracy(auto_arima_model_validate)
 
-# Forecast 3 years ahead for the GHG time series
+# Forecast 3 years of data that is already measured using auto ARIMA
 forecast(auto_arima_model_validate, 3)
+# Plot the model used for validation
 plot(forecast(auto_arima_model_validate, 3),
      xlab ="Year",
      ylab ="Mt C02 eq")
 #################################
-lin_model <- lm(National.Total~Year, data=epa_data_GHG)
-lin_model
-accuracy(lin_model)
-qqnorm(lin_model$residuals)
-qqline(lin_model$residuals)
-
-#d <- epa_data(National.Total,Year)  ## need to use data in a data.frame for predict()
-d <- epa_data[,c("National.Total","Year")]  ## need to use data in a data.frame for predict()
-
-logEstimate <- lm(log(National.Total)~Year,data=d)
-plot(d$Year,log(d$National.Total))
-xvec <- seq(1990,2017,length=nrow(d))
-xvec <-setNames(as.data.frame(xvec),c("Year"))
-
-logpred <- predict(logEstimate,newdata=data.frame(x=xvec))
-
-lines(xvec$Year,logpred)
-
-#x.ar <- ar(time_series_total_GHG, method = "mle")
-#x.ar$order
-#x.ar$ar
